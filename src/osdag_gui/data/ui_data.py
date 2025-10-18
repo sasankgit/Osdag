@@ -71,7 +71,7 @@ class Data:
         "Home": [":/images/home.png", ":/images/home_clicked.png"],
         "Connection": [":/images/connection.png", ":/images/connection_clicked.png"],
         "Tension Member": [":/images/tension_member.png", ":/images/tension_member_clicked.png"],
-        "Compression Member": [":/images/compression_member.png", ":/images/compression_member_clicked.png"],
+        "Compression Member": [":/images/tension_member.png", ":/images/compression_member_clicked.png"],
         "Flexural Member": [":/images/flexural_member.png", ":/images/flexural_member_clicked.png"],
         "Beam Column": [":/images/beam_column.png", ":/images/beam_column_clicked.png"],
         "Truss": [":/images/truss.png", ":/images/truss_clicked.png"],
