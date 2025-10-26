@@ -1,19 +1,19 @@
-import sys, os, yaml
+import sys, os, yaml, time
 import osdag_gui.resources.resources_rc
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QColorDialog,
-    QLabel, QPushButton, QFileDialog,  QCheckBox, QComboBox, QLineEdit,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QFileDialog,  QCheckBox, QComboBox, QLineEdit,
     QMenuBar, QSplitter, QSizePolicy, QDialog
 )
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import Qt, QSize, QRect, QPropertyAnimation, QEvent, Signal, QEasingCurve, QTimer
-from PySide6.QtGui import QIcon, QFont, QPixmap, QGuiApplication, QKeySequence, QAction, QColor, QBrush
+from PySide6.QtCore import Qt, QRect, QPropertyAnimation, QEvent, Signal, QTimer
+from PySide6.QtGui import QKeySequence, QAction, QColor, QBrush
 
 from osdag_gui.ui.components.floating_nav_bar import SidebarWidget
 from osdag_gui.ui.components.docks.input_dock import InputDock
 from osdag_gui.ui.components.docks.output_dock import OutputDock
 from osdag_gui.ui.components.docks.log_dock import LogDock
-from osdag_gui.ui.components.dialogs.loading_popup import ModernLoadingDialog, DelayThread
+from osdag_gui.ui.components.dialogs.loading_popup import LoadingDialogManager
 from osdag_gui.ui.components.dialogs.custom_messagebox import CustomMessageBox, MessageBoxType
 from osdag_gui.ui.components.dialogs.video_tutorials import TutorialsDialog
 from osdag_gui.ui.components.dialogs.ask_questions import AskQuestions
@@ -36,6 +36,9 @@ class CustomWindow(QWidget):
         self.parent = parent
         self.backend = backend()
 
+        app = QApplication.instance()
+        self.theme = app.theme_manager
+
         # Update recent Modules
         insert_recent_module(self.backend.module_name())
         # State to retain state saved or not
@@ -55,57 +58,7 @@ class CustomWindow(QWidget):
         self.backend.design_status = False
         self.backend.design_button_status = False
         self.fuse_model = None
-
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #ffffff;
-                margin: 0px;
-                padding: 0px;
-            }
-            QMenuBar {
-                background-color: #F4F4F4;
-                color: #000000;
-                padding: 0px;
-            }
-            QMenuBar::item {
-                padding: 5px 10px;
-                background: transparent;
-                border-radius: 0px;
-            }
-            QMenuBar::item:selected {
-                background: #FFFFFF;
-            }
-            QMenuBar::item:pressed {
-                background: #E8E8E8;
-            }
-            QMenu {
-                background-color: #FFFFFF;
-                border: 1px solid #D0D0D0;
-                border-radius: 4px;
-                padding: 0px;
-            }
-            QMenu::item {
-                padding: 5px;
-                color: #000000;
-                font-size: 11px;
-            }
-            QMenu::item:selected {
-                background-color: #E6F0FF;
-                border-radius: 3px;
-            }
-            QMenu::separator {
-                height: 1px;
-                background: #F0F0F0;
-                margin-left: 2px;
-                margin-right: 2px;
-                margin-top: 0px;
-                margin-bottom: 0px;
-            }
-            QMenu::right-arrow {
-                width: 8px;
-                height: 8px;
-            }
-        """)
+        self.setObjectName("template_page")
 
         # This initializes the cad Window in specific backend 
         self.display, _ = self.init_display(backend_str=CAD_BACKEND)
@@ -119,7 +72,7 @@ class CustomWindow(QWidget):
         self.sidebar.resize_sidebar(self.width(), self.height())
         self.sidebar.move(-self.sidebar.width() + 12, self.menu_bar.height())
         self.sidebar_animation = QPropertyAnimation(self.sidebar, b"geometry")
-        self.sidebar_animation.setDuration(300)
+        self.sidebar_animation.setDuration(40)
         self.sidebar.installEventFilter(self)
         self.sidebar.raise_()
 
@@ -162,7 +115,6 @@ class CustomWindow(QWidget):
         self.cad_widget._key_map.update(key_function)
 
         # background gradient
-        display.set_bg_gradient_color([255, 255, 255], [126, 126, 126])
         display.display_triedron()
         display.View.SetProj(1, 1, 1)
 
@@ -177,6 +129,42 @@ class CustomWindow(QWidget):
 
         return display, start_display
     
+    def paintEvent(self, event):
+        if self.theme.is_light():
+            self.cad_widget._display.set_bg_gradient_color([255, 255, 255], [126, 126, 126])
+            # Updating control buttons
+            if self.input_dock_active:
+                self.input_dock_control.load(":/vectors/input_dock_active_light.svg")
+            else:
+                self.input_dock_control.load(":/vectors/input_dock_inactive_light.svg")
+            
+            if self.output_dock_active:
+                self.output_dock_control.load(":/vectors/output_dock_active_light.svg")
+            else:
+                self.output_dock_control.load(":/vectors/output_dock_inactive_light.svg")
+            
+            if self.log_dock_active:
+                self.log_dock_control.load(":/vectors/logs_dock_active_light.svg")
+            else:
+                self.log_dock_control.load(":/vectors/logs_dock_inactive_light.svg")
+        else:
+            self.cad_widget._display.set_bg_gradient_color([83, 83, 83], [0, 0, 0])
+            # Updating control buttons
+            if self.input_dock_active:
+                self.input_dock_control.load(":/vectors/input_dock_active_dark.svg")
+            else:
+                self.input_dock_control.load(":/vectors/input_dock_inactive_dark.svg")
+            
+            if self.output_dock_active:
+                self.output_dock_control.load(":/vectors/output_dock_active_dark.svg")
+            else:
+                self.output_dock_control.load(":/vectors/output_dock_inactive_dark.svg")
+            
+            if self.log_dock_active:
+                self.log_dock_control.load(":/vectors/logs_dock_active_dark.svg")
+            else:
+                self.log_dock_control.load(":/vectors/logs_dock_inactive_dark.svg")
+        return super().paintEvent(event)
     # Create the view control button on cad widget
     def create_cad_view_controls(self):
         """Create view control buttons directly on the self.cad_widget"""
@@ -205,26 +193,7 @@ class CustomWindow(QWidget):
             btn.setFixedSize(32, 32)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.clicked.connect(callback)
-            
-            # Style each button individually
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: white;
-                    border: 1px solid black;
-                    color: black;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: #90AF13;
-                    border: 1px solid #90AF13;
-                    color: white;
-                }
-                QPushButton:pressed {
-                    background-color: white;
-                    border: 1px solid #90AF13;
-                    color: black;
-                }
-            """)
+            btn.setObjectName("cad_view_buttons")
             
             self.view_buttons.append(btn)
             btn.show()
@@ -412,15 +381,65 @@ class CustomWindow(QWidget):
         self.sidebar_animation.start()
 
     def init_ui(self, title: str):
+        # Docking icons Parent class
+        class ClickableSvgWidget(QSvgWidget):
+            clicked = Signal()  # Define a custom clicked signal
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            def mousePressEvent(self, event):
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self.clicked.emit()  # Emit the clicked signal on left-click
+                super().mousePressEvent(event)
+
         main_v_layout = QVBoxLayout(self)
         main_v_layout.setContentsMargins(0, 0, 0, 0)
         main_v_layout.setSpacing(0)
 
+        menu_h_layout = QHBoxLayout()
+        menu_h_layout.setContentsMargins(0, 0, 0, 0)
+        menu_h_layout.setSpacing(0)
+
         self.menu_bar = QMenuBar(self)
+        self.menu_bar.setObjectName("template_page_menu_bar")
         self.menu_bar.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.menu_bar.setFixedHeight(28)
         self.menu_bar.setContentsMargins(0, 0, 0, 0)
-        main_v_layout.addWidget(self.menu_bar)
+        menu_h_layout.addWidget(self.menu_bar)
+
+        # Control buttons
+        control_btn_widget = QWidget()
+        control_btn_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        control_btn_widget.setObjectName("control_btn_widget")
+        control_button_layout = QHBoxLayout(control_btn_widget)
+        control_button_layout.setSpacing(10)
+        control_button_layout.setContentsMargins(5,5,5,5)
+
+        self.input_dock_control = ClickableSvgWidget()
+        self.input_dock_control.setFixedSize(18, 18)
+        self.input_dock_control.load(":/vectors/input_dock_active_light.svg")
+        self.input_dock_control.clicked.connect(self.input_dock_toggle)
+        self.input_dock_active = True
+        control_button_layout.addWidget(self.input_dock_control)
+
+        self.log_dock_control = ClickableSvgWidget()
+        self.log_dock_control.load(":/vectors/logs_dock_inactive_light.svg")
+        self.log_dock_control.setFixedSize(18, 18)
+        self.log_dock_control.clicked.connect(self.logs_dock_toggle)
+        self.log_dock_active = False
+        control_button_layout.addWidget(self.log_dock_control)
+
+        self.output_dock_control = ClickableSvgWidget()
+        self.output_dock_control.load(":/vectors/output_dock_inactive_light.svg")
+        self.output_dock_control.setFixedSize(18, 18)
+        self.output_dock_control.clicked.connect(self.output_dock_toggle)
+        self.output_dock_active = False
+        control_button_layout.addWidget(self.output_dock_control)
+
+        menu_h_layout.addWidget(control_btn_widget)
+
+        main_v_layout.addLayout(menu_h_layout)
         self.create_menu_bar_items()
 
         self.body_widget = QWidget()
@@ -429,8 +448,8 @@ class CustomWindow(QWidget):
         self.layout.setSpacing(0)
 
         self.splitter = QSplitter(Qt.Horizontal, self.body_widget)
+        self.splitter.setHandleWidth(2)
         self.input_dock = InputDock(backend=self.backend, parent=self)
-        self.input_dock_active = True
         input_dock_width = self.input_dock.sizeHint().width()
         self._input_dock_default_width = input_dock_width
         self.splitter.addWidget(self.input_dock)
@@ -455,12 +474,12 @@ class CustomWindow(QWidget):
         central_V_layout.addWidget(self.cad_comp_widget)
 
         self.cad_log_splitter = QSplitter(Qt.Vertical)
+        self.cad_log_splitter.setHandleWidth(2)
         # Add Cad Model Widget
         self.create_cad_view_controls()
         self.cad_log_splitter.addWidget(self.cad_widget)
 
         self.logs_dock = LogDock()
-        self.logs_dock_active = True
         self.logs_dock.setVisible(False)
         # log text
         self.textEdit = self.logs_dock.log_display
@@ -484,9 +503,8 @@ class CustomWindow(QWidget):
 
         # root is the greatest level of parent that is the MainWindow
         self.output_dock = OutputDock(backend=self.backend, parent=self)
-        self.output_dock_active = True
         self.splitter.addWidget(self.output_dock)
-        self.output_dock.setStyleSheet(self.output_dock.styleSheet())
+        # self.output_dock.setStyleSheet(self.output_dock.styleSheet())
         self.output_dock.hide()
 
         self.layout.addWidget(self.splitter)
@@ -547,27 +565,7 @@ class CustomWindow(QWidget):
             # Keep stretch factors as well for subsequent resizes
             self.cad_log_splitter.setStretchFactor(0, 6)
             self.cad_log_splitter.setStretchFactor(1, 1)
-
-    def input_dock_toggle(self):
-        self.input_dock.toggle_input_dock()
-        self.input_dock_active = not self.input_dock_active
-        
-    def output_dock_toggle(self):
-        self.output_dock.toggle_output_dock()
-        self.output_dock_active = not self.output_dock_active
-
-    def logs_dock_toggle(self, log_dock_active):
-        self.logs_dock.setVisible(log_dock_active)
-        self.logs_dock_active = not self.logs_dock_active
-
-    def update_input_label_state(self, state):
-        # Show/hide input dock label based on dock state
-        self.input_dock_label.setVisible(state)
-    
-    def update_output_label_state(self, state):
-        # Show/hide input dock label based on dock state
-        self.output_dock_label.setVisible(state)
-        
+       
     def create_menu_bar_items(self):
         # File Menus
         file_menu = self.menu_bar.addMenu("File")
@@ -611,7 +609,7 @@ class CustomWindow(QWidget):
         quit_action = QAction("Quit", self)
         quit_action.setShortcut(QKeySequence("Shift+Q"))
         print("Quit..")
-        quit_action.triggered.connect(self.parent.close_current_tab)
+        # quit_action.triggered.connect(self.parent.close_current_tab)
         file_menu.addAction(quit_action)
 
         # Edit Menus
@@ -750,7 +748,10 @@ class CustomWindow(QWidget):
     
     def cadComponentControl(self, action, f, object_name):
         # calling backend function
-        f(self, "gradient_bg")
+        background = "gradient_light"
+        if not self.theme.is_light():
+            background = "gradient_dark"
+        f(self, background)
         # find the check box and make it checked
         checkBox = self.cad_comp_widget.findChild(QCheckBox, object_name)
         checkBox.setChecked(True)
@@ -861,7 +862,6 @@ class CustomWindow(QWidget):
             elif op[2] == TYPE_COMBOBOX_CUSTOMIZED:
                 if key_str in uiObj.keys():
                     for n in new:
-
                         if n[0] == key_str and n[0] == KEY_SECSIZE:
                             if set(uiObj[key_str]) != set(n[1]([input_widget.findChild(QWidget,
                                                           KEY_SEC_PROFILE).currentText()])):
@@ -874,6 +874,7 @@ class CustomWindow(QWidget):
                             if set(uiObj[key_str]) != set(n[1]()):
                                 key.setCurrentIndex(1)
                             else:
+                                print(key,type(key))
                                 key.setCurrentIndex(1)
                             data[key_str + "_customized"] = uiObj[key_str]
             else:
@@ -1069,6 +1070,79 @@ class CustomWindow(QWidget):
         self.sidebar.raise_()
         super().resizeEvent(event)
 
+    #---------------------------------Docking-Icons-Functionality-START----------------------------------------------
+
+    def input_dock_toggle(self):
+        self.input_dock.toggle_input_dock()
+        self.input_dock_active = not self.input_dock_active
+        
+    def output_dock_toggle(self):
+        self.output_dock.toggle_output_dock()
+        self.output_dock_active = not self.output_dock_active
+
+    def logs_dock_toggle(self):
+        self.log_dock_active = not self.log_dock_active
+        self.logs_dock.setVisible(self.log_dock_active)
+        if self.log_dock_active:
+            if self.theme.is_light():
+                self.log_dock_control.load(":/vectors/logs_dock_active_light.svg")
+            else:
+                self.log_dock_control.load(":/vectors/logs_dock_active_dark.svg")
+        else:
+            if self.theme.is_light():
+                self.log_dock_control.load(":/vectors/logs_dock_active_light.svg")
+            else:
+                self.log_dock_control.load(":/vectors/logs_dock_active_dark.svg") 
+
+    def update_docking_icons(self, input_is_active=None, log_is_active=None, output_is_active=None):
+            
+        if(input_is_active is not None):
+            self.input_dock_active = input_is_active
+            # Update and save control state
+            self.input_dock_active = input_is_active
+            if self.input_dock_active:
+                if self.theme.is_light():
+                    self.input_dock_control.load(":/vectors/input_dock_active_light.svg")
+                else:
+                    self.input_dock_control.load(":/vectors/input_dock_active_dark.svg")
+            else:
+                if self.theme.is_light():
+                    self.input_dock_control.load(":/vectors/input_dock_inactive_light.svg")
+                else:
+                    self.input_dock_control.load(":/vectors/input_dock_inactive_dark.svg")
+                        
+        # Update output dock icon
+        if(output_is_active is not None):
+            self.output_dock_active = output_is_active
+            # Update and save control state
+            self.output_dock_active = output_is_active
+            if self.output_dock_active:
+                if self.theme.is_light():
+                    self.output_dock_control.load(":/vectors/output_dock_active_light.svg")
+                else:
+                    self.output_dock_control.load(":/vectors/output_dock_active_dark.svg")
+            else:
+                if self.theme.is_light():
+                    self.output_dock_control.load(":/vectors/output_dock_inactive_light.svg")
+                else:
+                    self.output_dock_control.load(":/vectors/output_dock_inactive_dark.svg")
+
+        # Update log dock icon
+        if(log_is_active is not None):
+            self.log_dock_active = log_is_active
+            # Update and save control state
+            self.logs_dock_active = log_is_active
+            if self.log_dock_active:
+                if self.theme.is_light():
+                    self.log_dock_control.load(":/vectors/logs_dock_active_light.svg")
+                else:
+                    self.log_dock_control.load(":/vectors/logs_dock_active_dark.svg")
+            else:
+                if self.theme.is_light():
+                    self.log_dock_control.load(":/vectors/logs_dock_inactive_light.svg")
+                else:
+                    self.log_dock_control.load(":/vectors/logs_dock_inactive_dark.svg")
+     
     def toggle_animate(self, show: bool, dock: str = 'output', on_finished=None):
         sizes = self.splitter.sizes()
         n = self.splitter.count()
@@ -1138,12 +1212,12 @@ class CustomWindow(QWidget):
             self.splitter,
             sizes,
             target_sizes,
-            duration=100,
+            duration=40,
             on_finished=after_anim
         )
 
     def animate_splitter_sizes(self, splitter, start_sizes, end_sizes, duration, on_finished=None):
-        steps = 10
+        steps = 5
         interval = duration // steps
         step_sizes = [
             [start + (end - start) * i / steps for start, end in zip(start_sizes, end_sizes)]
@@ -1187,28 +1261,27 @@ class CustomWindow(QWidget):
         for i in range(self.splitter.count()):
             self.splitter.widget(i).update()
 
+    #---------------------------------Docking-Icons-Functionality-END----------------------------------------------
+
     def on_check_for_update(self):
         print("Action", "Check For Update selected.")
 
     # This opens loading widget and execute Design
     def start_thread(self, data):
-        self.thread_1 = DelayThread()
-        self.thread_2 = DelayThread()
+        import multiprocessing as mp
+        mp.set_start_method('spawn', force=True)
     
-        self.loading = ModernLoadingDialog()
-        self.setEnabled(False)
+        self.loading = LoadingDialogManager(self.theme.is_light())
         self.loading.show()
-        self.thread_1.start()
-        self.thread_1.finished.connect(lambda: self.common_function_for_save_and_design(self.backend, data, "Design"))
+        self.setEnabled(False)
+        time.sleep(1)
+        self.common_function_for_save_and_design(self.backend, data, "Design")
     
     def finished_loading(self):
-        self.thread_2.start()
-        self.thread_2.finished.connect(self.loading_close)
         print("Testing Custom Logger!")
         print(self.backend.logger.logs)
-
-    def loading_close(self):
-        self.loading.close()
+        time.sleep(1)
+        self.loading.hide()
         self.setEnabled(True)
 
     # Design Functions
@@ -1267,8 +1340,7 @@ class CustomWindow(QWidget):
                         self.logs_dock.setVisible(True)
                 
                 # Update logs dock control icon
-                if hasattr(self.parent, 'update_docking_icons'):
-                    self.parent.update_docking_icons(log_is_active=True)
+                self.update_docking_icons(log_is_active=True)
 
             if error is not None:
                 self.show_error_msg(error)
@@ -1289,7 +1361,6 @@ class CustomWindow(QWidget):
                         txt_label.setVisible(bool(option[3] != ""))
 
                 elif option[2] == TYPE_OUT_BUTTON:
-                    print(f"$~$ Enabled button {option[0]}")
                     self.output_dock.output_widget.findChild(QWidget, option[0]).setEnabled(True)
 
             # Ensure Output dock is visible and sized when we have results
@@ -1303,8 +1374,7 @@ class CustomWindow(QWidget):
                             self.logs_dock.setVisible(True)
                     
                     # Update logs dock control icon
-                    if hasattr(self.parent, 'update_docking_icons'):
-                        self.parent.update_docking_icons(log_is_active=True)
+                    self.update_docking_icons(log_is_active=True)
 
                 def hide_input():
                     try:
@@ -1555,19 +1625,6 @@ class CustomWindow(QWidget):
                 elif isinstance(key, QLineEdit):
                     self.connect_textbox_for_tab(key, tab, on_change_tab_list, main)
 
-        # for fu_fy in main.list_for_fu_fy_validation(main):
-        #
-        #     material_key_name = fu_fy[0]
-        #     fu_key_name = fu_fy[1]
-        #     fy_key_name = fu_fy[2]
-        #     material_key = self.designPrefDialog.ui.tabWidget.findChild(QtWidgets.QWidget, material_key_name)
-        #     fu_key = self.designPrefDialog.ui.tabWidget.findChild(QtWidgets.QWidget, fu_key_name)
-        #     fy_key = self.designPrefDialog.ui.tabWidget.findChild(QtWidgets.QWidget, fy_key_name)
-        #
-        #     for validation_key in [fu_key, fy_key]:
-        #         if validation_key.text() != "":
-        #             self.designPrefDialog.fu_fy_validation_connect([fu_key, fy_key], validation_key, material_key)
-
         for edit in main.edit_tabs():
             (tab_name, input_dock_key_name, change_typ, f) = edit
             tab = self.designPrefDialog.ui.tabWidget.tabs.findChild(QWidget, tab_name)
@@ -1748,19 +1805,19 @@ class InputDockIndicator(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.setStyleSheet("background-color: white;")
+        self.setObjectName("input_dock_indicator")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)  # Fixed width, expanding height
 
         input_layout = QHBoxLayout(self)
         input_layout.setContentsMargins(6,0,0,0)
         input_layout.setSpacing(0)
 
-        input_label = QSvgWidget(":/vectors/inputs_label.svg")
-        input_layout.addWidget(input_label)
-        input_label.setFixedWidth(32)
+        self.input_label = QSvgWidget()
+        input_layout.addWidget(self.input_label)
+        self.input_label.setFixedWidth(32)
 
         self.toggle_strip = QWidget()
-        self.toggle_strip.setStyleSheet("background-color: #94b816;")
+        self.toggle_strip.setObjectName("toggle_strip")
         self.toggle_strip.setFixedWidth(6)  # Always visible
         toggle_layout = QVBoxLayout(self.toggle_strip)
         toggle_layout.setContentsMargins(0, 0, 0, 0)
@@ -1772,28 +1829,24 @@ class InputDockIndicator(QWidget):
         self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.toggle_btn.clicked.connect(self.parent.input_dock_toggle)
         self.toggle_btn.setToolTip("Show input panel")
-        self.toggle_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #6c8408;
-                color: white;
-                font-size: 12px;
-                font-weight: bold;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #5e7407;
-            }
-        """)
+        self.toggle_btn.setObjectName("toggle_strip_button")
         toggle_layout.addStretch()
         toggle_layout.addWidget(self.toggle_btn)
         toggle_layout.addStretch()
         input_layout.addWidget(self.toggle_strip)
+    
+    def paintEvent(self, event):
+        if self.parent.theme.is_light():
+            self.input_label.load(":/vectors/inputs_label_light.svg")
+        else:
+            self.input_label.load(":/vectors/inputs_label_dark.svg")
+        return super().paintEvent(event)
 
 class OutputDockIndicator(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.setStyleSheet("background-color: white;")
+        self.setObjectName("output_dock_indicator")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)  # Fixed width, expanding height
 
         output_layout = QHBoxLayout(self)
@@ -1801,8 +1854,8 @@ class OutputDockIndicator(QWidget):
         output_layout.setSpacing(0)
 
         self.toggle_strip = QWidget()
-        self.toggle_strip.setStyleSheet("background-color: #94b816;")
         self.toggle_strip.setFixedWidth(6)  # Always visible
+        self.toggle_strip.setObjectName("toggle_strip")
         toggle_layout = QVBoxLayout(self.toggle_strip)
         toggle_layout.setContentsMargins(0, 0, 0, 0)
         toggle_layout.setSpacing(0)
@@ -1813,26 +1866,22 @@ class OutputDockIndicator(QWidget):
         self.toggle_btn.setFixedSize(6, 60)
         self.toggle_btn.clicked.connect(self.parent.output_dock_toggle)
         self.toggle_btn.setToolTip("Show panel")
-        self.toggle_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #6c8408;
-                color: white;
-                font-size: 12px;
-                font-weight: bold;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #5e7407;
-            }
-        """)
+        self.toggle_btn.setObjectName("toggle_strip_button")
         toggle_layout.addStretch()
         toggle_layout.addWidget(self.toggle_btn)
         toggle_layout.addStretch()
         output_layout.addWidget(self.toggle_strip)
 
-        output_label = QSvgWidget(":/vectors/outputs_label.svg")
-        output_layout.addWidget(output_label)
-        output_label.setFixedWidth(28)
+        self.output_label = QSvgWidget()
+        output_layout.addWidget(self.output_label)
+        self.output_label.setFixedWidth(28)
+
+    def paintEvent(self, event):
+        if self.parent.theme.is_light():
+            self.output_label.load(":/vectors/outputs_label_light.svg")
+        else:
+            self.output_label.load(":/vectors/outputs_label_dark.svg")
+        return super().paintEvent(event)
 
 class CadComponentCheckbox(QWidget):
     def __init__(self, backend:object, parent):
@@ -1840,62 +1889,7 @@ class CadComponentCheckbox(QWidget):
         self.parent = parent
         # Fetch checkbox data
         data = backend.get_3d_components()
-        self.setStyleSheet('''
-            QWidget {
-                padding: 5px;               
-            }
-            QCheckBox {
-                color: #000000;
-                margin: 5px;
-                border-style: solid;
-                border-width: 1px;
-                border-color: transparent;
-            }
-            QCheckBox:disabled {
-                color: #808086;
-                margin: 5px;
-                border-style: solid;
-                border-width: 1px;
-                border-color: transparent;
-            }
-            QCheckBox:hover {
-                border-radius: 4px;
-                border-style: solid;
-                border-width: 1px;
-                border-color: transparent;
-            }
-
-            QCheckBox::indicator {
-                width: 12px;
-                height: 12px;
-            }
-
-            QCheckBox::indicator:checked {
-                border-style: solid;
-                border-width: 1px;
-                border-color: qlineargradient(
-                    spread:pad, x1:0.5, y1:1, x2:0.5, y2:0,
-                    stop:0 rgba(120, 120, 120, 255),
-                    stop:1 rgba(180, 180, 180, 255)
-                );
-                background-color: qlineargradient(
-                    spread:pad, x1:0.5, y1:1, x2:0.5, y2:0,
-                    stop:0 rgba(120, 120, 120, 255),
-                    stop:1 rgba(200, 200, 200, 255)
-                );
-            }
-
-            QCheckBox::indicator:unchecked {
-                border-style: solid;
-                border-width: 1px;
-                border-color: qlineargradient(
-                    spread:pad, x1:0.5, y1:1, x2:0.5, y2:0,
-                    stop:0 rgba(160, 160, 160, 255),
-                    stop:1 rgba(200, 200, 200, 255)
-                );
-                background-color: #ffffff;
-            }
-        ''')
+        self.setObjectName("cad_custom_selector")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.checkbox_layout = QHBoxLayout(self)
@@ -1913,8 +1907,10 @@ class CadComponentCheckbox(QWidget):
         self.checkbox_layout.addStretch()
 
     def component_connect(self, backend, check_box, f):
-        check_box.clicked.connect(lambda: f(self.parent, "gradient_bg"))
-
+        background = "gradient_light"
+        if not self.parent.theme.is_light():
+            background = "gradient_dark"
+        check_box.clicked.connect(lambda: f(self.parent, background))
 
 # Standalone testing
 # python -m osdag_gui.ui.windows.template_page

@@ -5,19 +5,18 @@ Handles tab management, docking icons, and main window controls.
 import osdag_gui.resources.resources_rc
 
 from PySide6.QtWidgets import QMainWindow
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import Signal
 
 import sys
 import os, yaml
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QApplication, QGridLayout, QFileDialog,
-    QLabel, QMainWindow, QSizePolicy, QFrame, QScrollArea, QButtonGroup, QTabBar, QTabWidget,
+    QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QApplication, QFileDialog,
+    QMainWindow, QTabBar, QTabWidget,
 )
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtCore import Qt, Signal, QSize, QEvent, QTimer, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QFont, QIcon, QPainter, QColor, QGuiApplication, QPixmap
-from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtCore import Qt, Signal, QSize, QEvent, QTimer
+from PySide6.QtGui import QIcon, QGuiApplication, QPixmap
 
 from osdag_gui.ui.windows.home_window import HomeWindow
 from osdag_gui.ui.windows.template_page import CustomWindow
@@ -27,11 +26,11 @@ from osdag_gui.data.database.database_config import PROJECT_PATH, ID, update_pro
 
 from osdag_gui.data.database.database_config import get_module_function
 from osdag_core.Common import *
+# Backend Class Imports
 from osdag_core.design_type.connection.fin_plate_connection import FinPlateConnection
 from osdag_core.design_type.connection.cleat_angle_connection import CleatAngleConnection
 from osdag_core.design_type.connection.seated_angle_connection import SeatedAngleConnection
 from osdag_core.design_type.connection.end_plate_connection import EndPlateConnection
-
 import openpyxl
 
 class MainWindow(QMainWindow):
@@ -41,20 +40,12 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(":/images/osdag_logo.png"))
         self.setCursor(Qt.CursorShape.ArrowCursor)
         # Apply global QToolTip stylesheet here
-        QApplication.instance().setStyleSheet("""
-            QToolTip {
-                background-color: #FFFFFF;
-                color: #000000;
-                border: 1px solid #90AF13;
-                padding: 2px 2px;
-                font-size: 10px;
-                border-radius: 0px;
-                qproperty-alignment: AlignVCenter;
-            }
-        """)
 
         screen = QGuiApplication.primaryScreen()
         screen_size = screen.availableGeometry()
+
+        app = QApplication.instance()
+        self.theme = app.theme_manager
 
         screen_width = screen_size.width()
         screen_height = screen_size.height()
@@ -74,17 +65,6 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint) # Make the window frameless for custom buttons
         self.current_tab_index = 0 # To keep track of the next tab index
         self.btn_size = QSize(46, 30)
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #f4f4f4;
-                border: 1px solid #90af13;
-                margin: 0px;
-                padding: 0px;
-            } 
-            QWidget#BottomLine {
-                background-color: #90af13;
-            }
-        """)
 
         # Initialize UI first, as sidebar will overlay it
         self.init_ui() # Call init_ui before sidebar creation to ensure main content exists
@@ -130,44 +110,11 @@ class MainWindow(QMainWindow):
 
         # QTabBar
         self.tab_bar = QTabBar()
+        self.tab_bar.setObjectName("main_tabs")
         self.tab_bar.setExpanding(False)
         self.tab_bar.setTabsClosable(True)
         self.tab_bar.setMovable(False)
         self.tab_bar.tabCloseRequested.connect(self.handle_close_tab)
-        # Custom tab style
-        self.tab_bar.setStyleSheet('''
-            QTabBar::tab {
-                background: #F4F4F4;
-                border-left: 1px solid #d9d7d7;
-                border-right: 1px solid #d9d7d7;
-                border-top: 1px solid #F4F4F4;
-                border-bottom: 1px solid #F4F4F4;
-                padding: 6px 18px 6px 18px;
-                color: #000000;
-                font-size: 11px;
-                margin-left: 0px;
-            }
-            QTabBar::tab:selected {
-                background: #ffffff;
-                color: #000000;
-                border: 1px solid #90AF13;
-                border-bottom: 1px solid #ffffff;
-                padding: 6px 18px 6px 18px;
-            }
-            QTabBar::tab:hover {
-                border-top: 1px solid #90AF13;
-                border-left: 1px solid #90AF13;
-                border-right: 1px solid #90AF13;
-            }
-            QTabBar::close-button {
-                image: url(:/vectors/window_close.svg);
-                subcontrol-origin: padding;
-                subcontrol-position: center right;
-            }
-            QTabBar::close-button:hover {
-                image: url(:/vectors/window_close_hover.svg);
-            }
-        ''')
         tabs_h_layout.addWidget(self.tab_bar)
         top_h_layout.addLayout(tabs_h_layout)
         
@@ -181,85 +128,24 @@ class MainWindow(QMainWindow):
         # Helper function to create a styled button
         def create_button(icon_svg, is_close=False):
             btn = QPushButton()
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #f4f4f4;
-                    color: white;
-                    border: none;
-                    padding: 0px;
-                }
-                QPushButton:hover {
-                    background-color: #d9d7d7;
-                }
-                QPushButton:pressed {
-                    background-color: #cfcfcf;
-                }
-                QPushButton#close_button:hover {
-                    background-color: #E81123;
-                }
-                QPushButton#close_button:pressed {
-                    background-color: #F1707A;
-                }
-            """)
             btn.setFixedSize(self.btn_size)
             btn.setIcon(QIcon(QPixmap.fromImage(QPixmap(icon_svg).toImage())))
             btn.setIconSize(QSize(14, 14))
             if is_close:
                 btn.setObjectName("close_button")
+            else:
+                btn.setObjectName("window_control_button")
             return btn
 
-        class ClickableSvgWidget(QSvgWidget):
-            clicked = Signal()  # Define a custom clicked signal
-            def __init__(self, parent=None):
-                super().__init__(parent)
-                self.setCursor(Qt.CursorShape.PointingHandCursor)
-
-            def mousePressEvent(self, event):
-                if event.button() == Qt.MouseButton.LeftButton:
-                    self.clicked.emit()  # Emit the clicked signal on left-click
-                super().mousePressEvent(event)
-
-        # Control buttons
-        control_button_layout = QHBoxLayout()
-        control_button_layout.setSpacing(10)
-        control_button_layout.setContentsMargins(5,5,5,5)
-
-        self.input_dock_control = ClickableSvgWidget()
-        self.input_dock_control.load(":/vectors/input_dock_active.svg")
-        self.input_dock_control.setFixedSize(18, 18)
-        self.input_dock_control.clicked.connect(self.toggle_input_dock)
-        self.input_dock_active = True
-        control_button_layout.addWidget(self.input_dock_control)
-
-        self.log_dock_control = ClickableSvgWidget()
-        self.log_dock_control.load(":/vectors/logs_dock_inactive.svg")
-        self.log_dock_control.setFixedSize(18, 18)
-        self.log_dock_control.clicked.connect(self.logs_dock_icon_toggle)
-        self.log_dock_active = False
-        control_button_layout.addWidget(self.log_dock_control)
-
-        self.output_dock_control = ClickableSvgWidget()
-        self.output_dock_control.load(":/vectors/output_dock_inactive.svg")
-        self.output_dock_control.setFixedSize(18, 18)
-        self.output_dock_control.clicked.connect(self.toggle_output_dock)
-        self.output_dock_active = False
-        control_button_layout.addWidget(self.output_dock_control)
-
-        self.input_dock_control.hide()
-        self.log_dock_control.hide()
-        self.output_dock_control.hide()
-
-        top_h_layout.addLayout(control_button_layout)
-
-        self.minimize_button = create_button(":/vectors/window_minimize.svg")
+        self.minimize_button = create_button(":/vectors/window_minimize_light.svg")
         self.minimize_button.clicked.connect(self.showMinimized)
         top_h_layout.addWidget(self.minimize_button)
 
-        self.maximize_button = create_button(":/vectors/window_maximize.svg")
+        self.maximize_button = create_button(":/vectors/window_maximize_light.svg")
         self.maximize_button.clicked.connect(self.toggle_maximize_restore)
         top_h_layout.addWidget(self.maximize_button)
 
-        self.close_button = create_button(":/vectors/window_close.svg", is_close=True)
+        self.close_button = create_button(":/vectors/window_close_light.svg", is_close=True)
         self.close_button.clicked.connect(self.close)
         top_h_layout.addWidget(self.close_button)
 
@@ -274,12 +160,6 @@ class MainWindow(QMainWindow):
         self.tab_widget.tabBar().hide()
         self.tab_widget.setTabsClosable(True) # Allow closing tabs
         self.tab_widget.setMovable(False) # Allow reordering tabs
-        self.tab_widget.setStyleSheet("""
-            QTabWidget {
-                background-color: #ffffff;
-                border: 0px;
-            }
-        """)
         self.tab_widget_content = []
         self.tab_widget.tabCloseRequested.connect(self.handle_close_tab)
         main_v_layout.addWidget(self.tab_widget)
@@ -291,11 +171,36 @@ class MainWindow(QMainWindow):
         if self.tab_bar.count() > 0:
             self.tab_widget.setCurrentIndex(self.tab_bar.currentIndex())
 
+    def paintEvent(self, event):
+        if self.theme.is_light():
+            self.minimize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_minimize_light.svg").toImage())))
+            self.close_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_close_light.svg").toImage())))
+            if self.isMaximized():
+                self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_restore_light.svg").toImage())))
+            else:
+                self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_maximize_light.svg").toImage())))
+
+        else:
+            self.minimize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_minimize_dark.svg").toImage())))
+            self.close_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_close_dark.svg").toImage())))
+            if self.isMaximized():
+                self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_restore_dark.svg").toImage())))
+            else:
+                self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_maximize_dark.svg").toImage())))
+
+        super().paintEvent(event)
+
     def set_maximize_icon(self):
-        self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_maximize.svg").toImage())))
+        if self.theme.is_light():
+            self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_maximize_light.svg").toImage())))
+        else:
+            self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_maximize_dark.svg").toImage())))
 
     def set_restore_icon(self):
-        self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_restore.svg").toImage())))
+        if self.theme.is_light():
+            self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_restore_light.svg").toImage())))
+        else:
+            self.maximize_button.setIcon(QIcon(QPixmap.fromImage(QPixmap(":/vectors/window_restore_dark.svg").toImage())))
 
     def toggle_maximize_restore(self):
         """Toggles between maximized and normal window states and updates the icon."""
@@ -317,8 +222,8 @@ class MainWindow(QMainWindow):
 
         # it initially sets the home on the Tab
         self.open_home_page(module)
-        # False(dock icons show status), True(input dock show), False(logs dock show), False(output dock show)
-        self.tab_widget_content.append([body_widget, False, True, False, False])
+        # Widget of the Module
+        self.tab_widget_content.append(body_widget)
         self.tab_widget.addTab(body_widget, f"Tab {self.current_tab_index + 1}")
         # Update main_widget_layout to the layout of the new tab's body_widget
         if hasattr(body_widget, 'layout'):
@@ -334,25 +239,14 @@ class MainWindow(QMainWindow):
         new_index = self.tab_bar.count() - 1
         self.tab_bar.setCurrentIndex(new_index)
         self.tab_widget.setCurrentIndex(new_index)
-        # Update docking icons for the newly added tab
-        current_tab_data = self.tab_widget_content[new_index]
-        self.update_docking_icons(current_tab_data[1], current_tab_data[2], current_tab_data[3], current_tab_data[4])
-        
-        # self.sidebar.raise_() # Ensure sidebar stays on top after new tab addition
 
     def handle_tab_change(self, index):
         # Switch the QTabWidget to the new tab
         if index < len(self.tab_widget_content) and index >= 0:
             self.tab_widget.setCurrentIndex(index)
 
-            if self.tab_bar.tabText(index) == "Home":
-                self.tab_widget_content[index][1] = False
-            else:
-                self.tab_widget_content[index][1] = True
-                
-            current_tab_data = self.tab_widget_content[index]
             # Update main_widget_instance to the main widget in the current tab
-            body_widget = current_tab_data[0]
+            body_widget = self.tab_widget_content[index]
             if hasattr(body_widget, 'layout') and body_widget.layout().count() > 0:
                 widget_item = body_widget.layout().itemAt(0)
                 if widget_item is not None:
@@ -362,10 +256,6 @@ class MainWindow(QMainWindow):
             # Update main_widget_layout to the layout of the current tab's body_widget
             if hasattr(body_widget, 'layout'):
                 self.main_widget_layout = body_widget.layout()
-
-            # Update dock icons based on the new tab's state
-            self.update_docking_icons(current_tab_data[1], current_tab_data[2], current_tab_data[3], current_tab_data[4])
-
 
     # This is triggered by Quit button in Menu bar on template_page
     def close_current_tab(self):
@@ -439,30 +329,35 @@ class MainWindow(QMainWindow):
             return False
     
     def _get_template_instance(self, index) -> object:
-        return self.tab_widget_content[index][0].layout().itemAt(0).widget()
+        return self.tab_widget_content[index].layout().itemAt(0).widget()
 
     def _close_tab(self, index):
-        """Handles closing of tabs."""
+        """Handles closing of tabs with proper cleanup."""
+        widget = self.tab_widget.widget(index)
+        
+        # Get the template instance and cleanup
+        template_instance = self._get_template_instance(index)
+        if template_instance and hasattr(template_instance, 'cleanup'):
+            template_instance.cleanup()
+        
         self.tab_widget.removeTab(index)
         self.tab_bar.removeTab(index)
         self.tab_widget_content.pop(index)
-        # synchronize with tab_bar
+        
+        widget.deleteLater()
         self._synchronize_tab_widget()
         
     def _synchronize_tab_widget(self):
         current_index = self.tab_bar.currentIndex()
         self.tab_widget.setCurrentIndex(current_index)
         # Update global variables and icons
-        current_tab_data = self.tab_widget_content[current_index]
-        body_widget = current_tab_data[0]
+        body_widget = self.tab_widget_content[current_index]
         if hasattr(body_widget, 'layout') and body_widget.layout().count() > 0:
             widget = body_widget.layout().itemAt(0).widget()
             self.main_widget_instance = widget
         # Ensure main_widget_layout points to the currently active tab's layout
         if hasattr(body_widget, 'layout'):
             self.main_widget_layout = body_widget.layout()
-        # Update docking icons using the current active tab index (not the closed one)
-        self.update_docking_icons(current_tab_data[1], current_tab_data[2], current_tab_data[3], current_tab_data[4])
 
     # Allow dragging the window when frameless
     def mousePressEvent(self, event):
@@ -510,8 +405,8 @@ class MainWindow(QMainWindow):
             self.open_fin_plate_shear_connection()
         elif card_title == "Cleat Angle":
             self.open_cleat_angle_shear_connection()
-        elif card_title == "End Plate":
-            self.open_end_plate_shear_connection()
+        elif card_title == "Header Plate":
+            self.open_header_plate_shear_connection()
         elif card_title == "Seated Angle":
             self.open_seated_angle_shear_connection()
 
@@ -545,10 +440,6 @@ class MainWindow(QMainWindow):
         self.main_widget_layout.addWidget(fin_plate)
         index = self.tab_bar.currentIndex()
         self.tab_bar.setTabText(index, title)
-        # Show docking Icons
-        self.tab_widget_content[index][1] = True
-        current_tab_data = self.tab_widget_content[index]
-        self.update_docking_icons(current_tab_data[1], current_tab_data[2], current_tab_data[3], current_tab_data[4])
 
     def open_cleat_angle_shear_connection(self):
         title = "Cleat Angle Connection"
@@ -578,13 +469,9 @@ class MainWindow(QMainWindow):
         self.main_widget_layout.addWidget(fin_plate)
         index = self.tab_bar.currentIndex()
         self.tab_bar.setTabText(index, title)
-        # Show docking Icons
-        self.tab_widget_content[index][1] = True
-        current_tab_data = self.tab_widget_content[index]
-        self.update_docking_icons(current_tab_data[1], current_tab_data[2], current_tab_data[3], current_tab_data[4])
 
-    def open_end_plate_shear_connection(self):
-        title = "End Plate Connection"
+    def open_header_plate_shear_connection(self):
+        title = "Header Plate Connection"
         self.clear_layout(self.main_widget_layout)
         fin_plate = CustomWindow(title, EndPlateConnection, parent=self)
 
@@ -611,11 +498,7 @@ class MainWindow(QMainWindow):
         self.main_widget_layout.addWidget(fin_plate)
         index = self.tab_bar.currentIndex()
         self.tab_bar.setTabText(index, title)
-        # Show docking Icons
-        self.tab_widget_content[index][1] = True
-        current_tab_data = self.tab_widget_content[index]
-        self.update_docking_icons(current_tab_data[1], current_tab_data[2], current_tab_data[3], current_tab_data[4])
-    
+
     def open_seated_angle_shear_connection(self):
         title = "Seated Angle Connection"
         self.clear_layout(self.main_widget_layout)
@@ -644,11 +527,7 @@ class MainWindow(QMainWindow):
         self.main_widget_layout.addWidget(fin_plate)
         index = self.tab_bar.currentIndex()
         self.tab_bar.setTabText(index, title)
-        # Show docking Icons
-        self.tab_widget_content[index][1] = True
-        current_tab_data = self.tab_widget_content[index]
-        self.update_docking_icons(current_tab_data[1], current_tab_data[2], current_tab_data[3], current_tab_data[4])
-           
+
     def open_home_page(self, module):
         self.clear_layout(self.main_widget_layout)
         home_window = HomeWindow()
@@ -827,84 +706,20 @@ class MainWindow(QMainWindow):
             item = layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.setParent(None)
+                widget.deleteLater()
             else:
-                self.clear_layout(item.layout())
-
-    def update_docking_icons(self, docking_icons_active=None, input_is_active=None, log_is_active=None, output_is_active=None):
-        index = self.tab_bar.currentIndex()
-        current_tab_data = self.tab_widget_content[index]
-        if(docking_icons_active is None):
-            docking_icons_active = current_tab_data[1]
-
-        # Update input dock icon
-        if docking_icons_active:
-            self.input_dock_control.show()
-            self.output_dock_control.show()
-            self.log_dock_control.show()
-
-            if(input_is_active is not None):
-                self.input_dock_active = input_is_active
-                # Update and save control state
-                self.tab_widget_content[index][2] = input_is_active
-                if self.input_dock_active:
-                    self.input_dock_control.load(":/vectors/input_dock_active.svg")
-                else:
-                    self.input_dock_control.load(":/vectors/input_dock_inactive.svg")
-                            
-            # Update output dock icon
-            if(output_is_active is not None):
-                self.output_dock_active = output_is_active
-                # Update and save control state
-                self.tab_widget_content[index][4] = output_is_active
-                if self.output_dock_active:
-                    self.output_dock_control.load(":/vectors/output_dock_active.svg")
-                else:
-                    self.output_dock_control.load(":/vectors/output_dock_inactive.svg")
-
-            # Update log dock icon
-            if(log_is_active is not None):
-                self.log_dock_active = log_is_active
-                # Update and save control state
-                self.tab_widget_content[index][3] = log_is_active
-                if self.log_dock_active:
-                    self.log_dock_control.load(":/vectors/logs_dock_active.svg")
-                else:
-                    self.log_dock_control.load(":/vectors/logs_dock_inactive.svg")
-        else:
-            self.input_dock_control.hide()
-            self.output_dock_control.hide()
-            self.log_dock_control.hide()
-
-    def toggle_input_dock(self):
-        if self.main_widget_instance:
-            self.main_widget_instance.input_dock_toggle()
-    
-    def toggle_output_dock(self):
-        if self.main_widget_instance:
-            self.main_widget_instance.output_dock_toggle()
-
-    def logs_dock_icon_toggle(self):
-        self.log_dock_active = not self.log_dock_active
-        self.tab_widget_content[self.tab_bar.currentIndex()][3] = self.log_dock_active
-        if self.log_dock_active:
-            self.log_dock_control.load(":/vectors/logs_dock_active.svg")
-        else:
-            self.log_dock_control.load(":/vectors/logs_dock_inactive.svg")    
-
-        if self.main_widget_instance:
-            self.main_widget_instance.logs_dock_toggle(self.log_dock_active)
-
-    def print_n_test(self):
-        print(self)
+                layout.deleteLater()
 
 if __name__ == "__main__":
     import sys, os
+    from osdag_gui.ui.utils.theme_manager import ThemeManager
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     from PySide6.QtWidgets import QApplication
     app = QApplication(sys.argv)
+    app.theme_manager = ThemeManager(app)
     app.setStyle("Fusion")
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec())
+
 

@@ -1,8 +1,7 @@
 import sys
-from PySide6.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel, QHBoxLayout, QWidget
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QIcon, QPixmap, QFont, QCursor, QDesktopServices
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QCursor
 
 from osdag_gui.ui.components.dialogs.custom_titlebar import CustomTitleBar
 import osdag_gui.resources.resources_rc
@@ -22,11 +21,7 @@ class TutorialsDialog(QDialog):
         
         # Base stylesheet for the dialog with gradient background
         self.setStyleSheet("""
-            #TutorialsDialog {
-                background-color: #FFFFFF;
-                border: 1px solid #90AF13;
-            }
-            t#ContentWidget {
+            #ContentWidget {
                 background-color: transparent;
                 margin: 2px;
             }
@@ -52,7 +47,7 @@ class TutorialsDialog(QDialog):
         # "Please visit :" label
         visitLabel = QLabel("Please visit :", self)
         visitLabel.setStyleSheet("""
-            color: #333333;
+            color: #A6A6A6;
             font-size: 13px;
             font-weight: normal;
         """)
