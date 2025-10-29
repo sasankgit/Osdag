@@ -101,7 +101,7 @@ Contains SVGs, images, backgrounds, and theme files for the application.
         <file>images/2d_frame_clicked.svg</file>
 
         <file>images/3d_frame.svg</file>
-        <file>images/3d_frame_dark.png</file>
+        <file>images/3d_frame_dark.svg</file>
         <file>images/3d_frame_clicked.png</file>
 
         <file>images/down_arrow_light.png</file>
