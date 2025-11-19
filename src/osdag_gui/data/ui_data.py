@@ -56,7 +56,13 @@ class Data:
             ("Plate Girder", ":/vectors/ss_beam_flexural_mem.svg"),
         ],
         "Beam Column": 
-        [],
+        [
+            
+        ],
+        "Plate Girder":
+        [
+            ("Plate Girder",":/vectors/shear_fin_plate_connec.svg")
+        ],
         "Truss": 
         [],
         "2D Frame": 
@@ -73,6 +79,7 @@ class Data:
         "Compression Member": [":/images/compression_member.svg", ":/images/compression_member_clicked.svg", ":/images/compression_member_dark.svg"],
         "Flexural Member": [":/images/flexural_member.svg", ":/images/flexural_member_clicked.svg", ":/images/flexural_member_dark.svg"],
         "Beam Column": [":/images/beam_column.svg", ":/images/beam_column_clicked.svg", ":/images/beam_column_dark.svg"],
+        "Plate Girder":[":/images/beam_column.svg", ":/images/beam_column_clicked.svg", ":/images/beam_column_dark.svg"],
         "Truss": [":/images/truss.svg", ":/images/truss_clicked.svg", ":/images/truss_dark.svg"],
         "2D Frame": [":/images/2d_frame.svg", ":/images/2d_frame_clicked.svg", ":/images/2d_frame_dark.svg"],
         "3D Frame": [":/images/3d_frame.svg", ":/images/3d_frame_clicked.png", ":/images/3d_frame_dark.svg"],
