@@ -75,14 +75,14 @@ class Data:
 
         "Home": [":/vectors/home_default.svg", ":/vectors/home_clicked.svg", ":/vectors/home_default.svg"],
         "Connection": [":/images/connection.svg", ":/images/connection_clicked.svg", ":/images/connection_dark.svg"],
-        "Tension Member": [":/images/tension_member.svg", ":/images/tension_member_clicked.svg", ":/images/tension_member_dark.svg"],
-        "Compression Member": [":/images/compression_member.svg", ":/images/compression_member_clicked.svg", ":/images/compression_member_dark.svg"],
-        "Flexural Member": [":/images/flexural_member.svg", ":/images/flexural_member_clicked.svg", ":/images/flexural_member_dark.svg"],
-        "Beam Column": [":/images/beam_column.svg", ":/images/beam_column_clicked.svg", ":/images/beam_column_dark.svg"],
-        "Plate Girder":[":/images/beam_column.svg", ":/images/beam_column_clicked.svg", ":/images/beam_column_dark.svg"],
+        "Tension Member": [":/images/icons osdag tension.png", ":/images/tension_member_clicked.svg", ":/images/tension_member_dark.svg"],
+        "Compression Member": [":/images/icons osdag compression.png", ":/images/compression_member_clicked.svg", ":/images/compression_member_dark.svg"],
+        "Flexural Member": [":/images/icons osdag flexural.png", ":/images/flexural_member_clicked.svg", ":/images/flexural_member_dark.svg"],
+        "Beam Column": [":/images/icons osdag beam column.png", ":/images/beam_column_clicked.svg", ":/images/beam_column_dark.svg"],
+        "Plate Girder":[":/images/beam column.svg", ":/images/beam_column_clicked.svg", ":/images/beam_column_dark.svg"],
         "Truss": [":/images/truss.svg", ":/images/truss_clicked.svg", ":/images/truss_dark.svg"],
-        "2D Frame": [":/images/2d_frame.svg", ":/images/2d_frame_clicked.svg", ":/images/2d_frame_dark.svg"],
-        "3D Frame": [":/images/3d_frame.svg", ":/images/3d_frame_clicked.png", ":/images/3d_frame_dark.svg"],
+        "2D Frame": [":/images/icons osdag 2d frame.png", ":/images/2d_frame_clicked.svg", ":/images/2d_frame_dark.svg"],
+        "3D Frame": [":/images/3d_frame.png", ":/images/3d_frame_clicked.png", ":/images/3d_frame_dark.svg"],
 
     }
 
