@@ -72,7 +72,7 @@ Contains SVGs, images, backgrounds, and theme files for the application.
         <file>vectors/home_default.svg</file>
         <file>vectors/home_clicked.svg</file>
 
-        <file>images/connection.svg</file>
+        <file>images/icons osdag connection.png</file>
         <file>images/connection_dark.svg</file>
         <file>images/connection_clicked.svg</file>
 
@@ -100,7 +100,7 @@ Contains SVGs, images, backgrounds, and theme files for the application.
         <file>images/2d_frame_dark.svg</file>
         <file>images/2d_frame_clicked.svg</file>
 
-        <file>images/3d_frame.png</file>
+        <file>images/icons osdag 3d frame.png</file>
         <file>images/3d_frame_dark.svg</file>
         <file>images/3d_frame_clicked.png</file>
 

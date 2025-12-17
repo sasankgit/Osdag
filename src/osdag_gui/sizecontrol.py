@@ -11,8 +11,9 @@ DEFAULT_NAVBAR_ICON_SIZE = QSize(40, 40)
 # Example: "Tension Member": QSize(30, 30)
 CUSTOM_NAVBAR_ICON_SIZES = {
     "Tension Member": QSize(70, 70),
+    
     # "Icon Name": QSize(width, height),
-    "Connection" : QSize(25,25),
+    
 }
 
 # Default icon size for floating navbar buttons
