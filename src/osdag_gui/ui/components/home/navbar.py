@@ -12,6 +12,7 @@ from PySide6.QtSvgWidgets import QSvgWidget
 
 from osdag_gui.__config__ import VERSION
 import osdag_gui.resources.resources_rc
+from osdag_gui import sizecontrol
 
 class CustomButton(QPushButton):
     def __init__(self, text, icon_path_default, icon_path_clicked, icon_dark, group=None, parent=None):
@@ -29,7 +30,7 @@ class CustomButton(QPushButton):
             self.setIcon(self.default_icon)
         else:
             self.setIcon(self.dark_icon)
-        self.setIconSize(QSize(20, 20)) # Initial size, will be updated
+        self.setIconSize(sizecontrol.DEFAULT_NAVBAR_ICON_SIZE) # Initial size, will be updated
         self.set_default_style()
 
     def mousePressEvent(self, event):
@@ -177,9 +178,13 @@ class VerticalMenuBar(QWidget):
 
         for btn in self.button_group:
             btn.set_font_size(button_font_size)
-            # Adjust icon size based on button font size or a direct proportion
-            icon_size = max(16, int(button_font_size * 1.5))
-            btn.setIconSize(QSize(icon_size, icon_size))
+            # Adjust icon size based on custom settings or default from sizecontrol.py
+            button_name = btn.text().strip()
+            if button_name in sizecontrol.CUSTOM_NAVBAR_ICON_SIZES:
+                target_icon_size = sizecontrol.CUSTOM_NAVBAR_ICON_SIZES[button_name]
+            else:
+                target_icon_size = sizecontrol.DEFAULT_NAVBAR_ICON_SIZE
+            btn.setIconSize(target_icon_size)
             
             # Reapply style to ensure font update takes effect if style sheets override it
             if btn.is_clicked:

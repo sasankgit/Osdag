@@ -4,6 +4,7 @@ Provides quick access to modules and emits tab open signals.
 """
 import osdag_gui.resources.resources_rc
 from osdag_gui.data.ui_data import Data
+from osdag_gui import sizecontrol
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QToolTip
@@ -117,7 +118,6 @@ class SidebarWidget(QWidget):
         dat = Data()
         navbar_icons = dat.NAVBAR_ICONS
 
-        self.icon_size = 48  # px, you can adjust this value as needed
         for tooltip, icons in navbar_icons.items():
             btn = SidebarIconButton(icons[0], tooltip_text=tooltip, selected_icon_path=icons[1], hover_icon_path=icons[1] ,group=self.button_group)
             self.button_layout.addWidget(btn)
@@ -132,15 +132,22 @@ class SidebarWidget(QWidget):
         margin = SidebarIconButton.BUTTON_MARGIN
         padding = SidebarIconButton.BUTTON_PADDING
         spacing = self.button_layout.spacing()
-        icon_size = self.icon_size
-        button_size = icon_size + 2 * (margin + padding)
+        
+        # Use default floating navbar icon size for calculations if no custom size is specified
+        default_icon_width = sizecontrol.DEFAULT_FLOATING_NAVBAR_ICON_SIZE.width()
+        button_size = default_icon_width + 2 * (margin + padding)
         sidebar_width = button_size
         sidebar_height = num_buttons * button_size + (num_buttons - 1) * spacing
         self.setFixedWidth(sidebar_width)
         self.setFixedHeight(sidebar_height)
         for btn in self.button_group:
-            btn.setFixedSize(icon_size, icon_size)
-            btn.setIconSize(QSize(icon_size * 0.4, icon_size * 0.4))
+            button_name = btn.custom_tooltip_text 
+            if button_name in sizecontrol.CUSTOM_FLOATING_NAVBAR_ICON_SIZES:
+                target_icon_size = sizecontrol.CUSTOM_FLOATING_NAVBAR_ICON_SIZES[button_name]
+            else:
+                target_icon_size = sizecontrol.DEFAULT_FLOATING_NAVBAR_ICON_SIZE
+            btn.setFixedSize(target_icon_size)
+            btn.setIconSize(target_icon_size)
 
     def resize_sidebar(self, window_width, window_height):
         # No longer use window size for sidebar sizing
